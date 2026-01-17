@@ -1,9 +1,29 @@
 
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || "https://placeholder.supabase.co";
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "placeholder";
+// SAFE INITIALIZATION LOGIC
+// -------------------------
+// Vercel build environment might not have the env vars set immediately.
+// We default to valid placeholder strings to prevent the build from crashing.
 
-// We provide placeholders to prevent build-time crashes if env vars are missing.
-// The app will validly build, but you MUST set the real Environment Variables in Vercel for it to work.
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+const getSupabaseUrl = () => {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    // Check if it's a valid string and starts with http. If not, use placeholder.
+    if (!url || typeof url !== 'string' || !url.startsWith('http')) {
+        return "https://placeholder.supabase.co";
+    }
+    return url;
+};
+
+const getSupabaseKey = () => {
+    const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!key || typeof key !== 'string' || key.length === 0) {
+        return "placeholder-key-for-build";
+    }
+    return key;
+};
+
+const supabaseUrl = getSupabaseUrl();
+const supabaseKey = getSupabaseKey();
+
+export const supabase = createClient(supabaseUrl, supabaseKey);
