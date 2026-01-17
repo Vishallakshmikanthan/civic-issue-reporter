@@ -31,6 +31,7 @@ const classifyIssue = (description) => {
 
 // --- MAIN APP COMPONENT ---
 export default function CivicReporter() {
+    const [session, setSession] = useState(null);
     const [isLoggedIn, setIsLoggedIn] = useState(false);
     const [userType, setUserType] = useState(null);
     const [userProfile, setUserProfile] = useState(null); // Full profile from DB
@@ -60,53 +61,66 @@ export default function CivicReporter() {
             if (data) setComplaints(data);
         } catch (err) {
             console.error('Error fetching issues:', err);
-            // Fallback to empty or keep loading state if needed
+        }
+    };
+
+    const fetchUserProfile = async (userId) => {
+        try {
+            const { data, error } = await supabase
+                .from('profiles')
+                .select('*')
+                .eq('id', userId) // Expecting UUID match
+                .single();
+
+            if (data) {
+                setUserProfile(data);
+                setUserType(data.role || 'citizen');
+                setIsLoggedIn(true);
+                showToast(`Welcome, ${data.full_name}`);
+            } else {
+                console.warn("Profile not found, using default role");
+                setUserType('citizen');
+                setIsLoggedIn(true);
+            }
+        } catch (err) {
+            console.error("Profile fetch error", err);
         }
     };
 
     useEffect(() => {
         fetchIssues();
+
+        // AUTH LISTENER
+        supabase.auth.getSession().then(({ data: { session } }) => {
+            setSession(session);
+            if (session) fetchUserProfile(session.user.id);
+        });
+
+        const {
+            data: { subscription },
+        } = supabase.auth.onAuthStateChange((_event, session) => {
+            setSession(session);
+            if (session) {
+                fetchUserProfile(session.user.id);
+            } else {
+                setUserProfile(null);
+                setUserType(null);
+                setIsLoggedIn(false);
+            }
+        });
+
+        return () => subscription.unsubscribe();
     }, []);
 
     const showToast = (message, type = 'success') => setToast({ message, type });
 
-    const handleLogin = async (role, credentials) => {
-        // 1. Check if Supabase keys are set
-        if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
-            showToast("Supabase not configured. Check .env.local", "error");
-            return;
-        }
+    const handleLogin = () => { /* No-op, listener handles it */ };
 
-        // 2. Mock secure check (verify against profiles table for robustness)
-        try {
-            const { data, error } = await supabase
-                .from('profiles')
-                .select('*')
-                .eq('auth_id', credentials.id)
-                .eq('role', role)
-                .single();
-
-            if (data) {
-                setUserProfile(data);
-                setUserType(role);
-                setIsLoggedIn(true);
-                setActiveTab('home');
-                showToast(`Welcome back, ${data.full_name || role.toUpperCase()}`);
-            } else {
-                // Fallback for demo if they haven't imported CSV yet: Allow generic login but warn
-                console.warn("User ID not found in DB, entering Demo Mode");
-                setUserType(role);
-                setIsLoggedIn(true);
-                setActiveTab('home');
-                showToast(`Demo Access: ${role.toUpperCase()}`);
-            }
-        } catch (err) {
-            // Network error or other issue, fallback to demo access for stability
-            setUserType(role);
-            setIsLoggedIn(true);
-            setActiveTab('home');
-            showToast(`Offline Access: ${role.toUpperCase()}`);
-        }
+    const handleLogout = async () => {
+        await supabase.auth.signOut();
+        setIsLoggedIn(false);
+        setUserProfile(null);
+        showToast("Logged out successfully");
     };
 
     const handleUpdateStatus = async (id, newStatus) => {
@@ -123,17 +137,6 @@ export default function CivicReporter() {
     };
 
     const handleAddComment = async (id, text) => {
-        // Simplified: Just local state update for demo feel + DB insert
-        // Ideally create a 'comments' table insert here
-        const user_name = userProfile?.full_name || (userType === 'authority' ? 'Official' : 'Citizen');
-
-        // We update local state immediately for responsiveness
-        // Note: Schema has 'comments' table, but for this view we might need to fetch them
-        // For now, let's assume we just want to show it locally or implement refined comment fetching later
-        // To prevent crashing, we won't break the UI which expects comments array in issue object
-        // IF we fetch issues fresh, they might not have comments joined unless we use select('*, comments(*)')
-
-        // For now, simpler approach: Just Toast. Full comment system requires relational fetch update.
         showToast("Comment added (Database Sync Pending)");
     };
 
@@ -181,7 +184,7 @@ export default function CivicReporter() {
             status: 'submitted',
             severity: 75, // Mock severity logic
             photo_url: photoUrl,
-            user_id: userProfile?.id, // Link to profile if logged in
+            user_id: userProfile?.id || session?.user?.id, // Link to auth user
             upvotes: 0,
             lat: 28.6139 + (Math.random() * 0.1), // Mock geo for demo mapping
             lng: 77.2090 + (Math.random() * 0.1)
@@ -355,10 +358,10 @@ export default function CivicReporter() {
         );
     };
 
-    if (!isLoggedIn) return <div className="h-screen font-sans"><Toast message={toast?.message} type={toast?.type} onClose={() => setToast(null)} /> <Login onLogin={handleLogin} /></div>;
+    if (!isLoggedIn) return <div className="h-screen font-sans"><Toast message={toast?.message} type={toast?.type} onClose={() => setToast(null)} /> <Login /></div>;
 
     return (
-        <Layout sidebarProps={{ activeTab, setActiveTab, userType, onLogout: () => setIsLoggedIn(false) }}>
+        <Layout sidebarProps={{ activeTab, setActiveTab, userType, onLogout: handleLogout }}>
             <AnimatePresence>
                 {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
                 {selectedIssue && (

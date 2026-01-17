@@ -1,22 +1,49 @@
 "use client";
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { User, Shield, ArrowRight, Lock, RefreshCw } from 'lucide-react';
+import { User, Shield, ArrowRight, Lock, Mail, AlertCircle } from 'lucide-react';
+import { supabase } from '../lib/supabaseClient';
 
-export default function Login({ onLogin }) {
-    const [activeRole, setActiveRole] = useState('citizen'); // 'citizen' | 'authority'
-    const [credentials, setCredentials] = useState({ id: '', password: '' });
+export default function Login({ onLogin }) { // onLogin is just a fallback callback if needed, but we rely on session
+    const [isSignUp, setIsSignUp] = useState(false);
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [message, setMessage] = useState(null); // { type: 'error' | 'success', text: '' }
 
-    const handleLoginSubmit = (e) => {
+    const handleAuth = async (e) => {
         e.preventDefault();
-        if (credentials.id && credentials.password) {
-            onLogin(activeRole, credentials);
+        setLoading(true);
+        setMessage(null);
+
+        try {
+            if (isSignUp) {
+                // SIGN UP
+                const { data, error } = await supabase.auth.signUp({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                setMessage({ type: 'success', text: 'Account created! Please check your email to confirm.' });
+            } else {
+                // SIGN IN
+                const { data, error } = await supabase.auth.signInWithPassword({
+                    email,
+                    password,
+                });
+                if (error) throw error;
+                // Successful login is handled by the parent listener, but we can set a success message temporarily
+                setMessage({ type: 'success', text: 'Secure login successful...' });
+            }
+        } catch (error) {
+            setMessage({ type: 'error', text: error.message });
+        } finally {
+            setLoading(false);
         }
     };
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]">
-
             {/* Official Header Strip */}
             <div className="absolute top-0 w-full h-2 bg-gradient-to-r from-orange-500 via-white to-green-600 shadow-md z-10"></div>
 
@@ -28,7 +55,6 @@ export default function Login({ onLogin }) {
                 {/* Left Side: Branding */}
                 <div className="md:w-2/5 bg-blue-900 text-white p-8 flex flex-col justify-between relative overflow-hidden">
                     <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/diagmonds-light.png')] opacity-10"></div>
-
                     <div className="relative z-10 text-center">
                         <div className="w-20 h-20 mx-auto bg-white/10 rounded-full flex items-center justify-center border-2 border-yellow-400 mb-6 backdrop-blur-sm">
                             <span className="text-4xl">🏛️</span>
@@ -37,60 +63,46 @@ export default function Login({ onLogin }) {
                         <h1 className="text-2xl font-serif font-bold mb-2">Civic Issue Reporting Portal</h1>
                         <p className="text-xs text-blue-200">Ministry of Urban Affairs</p>
                     </div>
-
                     <div className="relative z-10 mt-8 space-y-4">
                         <div className="flex items-center gap-3 bg-blue-800/50 p-3 rounded-lg border border-blue-700">
                             <Shield className="w-5 h-5 text-yellow-400" />
                             <div className="text-left">
-                                <p className="text-xs font-bold text-white">Secure Access</p>
-                                <p className="text-[10px] text-blue-200">End-to-end encrypted reporting</p>
+                                <p className="text-xs font-bold text-white">Secure Authentication</p>
+                                <p className="text-[10px] text-blue-200">Protected by GovCloud Security</p>
                             </div>
                         </div>
-                        <div className="flex items-center gap-3 bg-blue-800/50 p-3 rounded-lg border border-blue-700">
-                            <User className="w-5 h-5 text-yellow-400" />
-                            <div className="text-left">
-                                <p className="text-xs font-bold text-white">Citizen First</p>
-                                <p className="text-[10px] text-blue-200">Transparency & Accountability</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="relative z-10 text-center mt-8">
-                        <p className="text-[10px] text-blue-300">Satyameva Jayate</p>
                     </div>
                 </div>
 
-                {/* Right Side: Login Form */}
-                <div className="md:w-3/5 p-8 bg-white">
-                    <div className="flex justify-center mb-8 border-b border-gray-100">
-                        <button
-                            onClick={() => setActiveRole('citizen')}
-                            className={`pb-3 px-6 text-sm font-bold transition-colors relative ${activeRole === 'citizen' ? 'text-blue-900 border-b-2 border-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Citizen Login
+                {/* Right Side: Auth Form */}
+                <div className="md:w-3/5 p-8 bg-white flex flex-col justify-center">
+                    <div className="flex justify-center mb-6 border-b border-gray-100">
+                        <button onClick={() => setIsSignUp(false)} className={`pb-3 px-6 text-sm font-bold transition-colors border-b-2 ${!isSignUp ? 'border-orange-500 text-blue-900' : 'border-transparent text-gray-400'}`}>
+                            Log In
                         </button>
-                        <button
-                            onClick={() => setActiveRole('authority')}
-                            className={`pb-3 px-6 text-sm font-bold transition-colors relative ${activeRole === 'authority' ? 'text-blue-900 border-b-2 border-orange-500' : 'text-gray-400 hover:text-gray-600'}`}
-                        >
-                            Page Official
+                        <button onClick={() => setIsSignUp(true)} className={`pb-3 px-6 text-sm font-bold transition-colors border-b-2 ${isSignUp ? 'border-orange-500 text-blue-900' : 'border-transparent text-gray-400'}`}>
+                            Sign Up
                         </button>
                     </div>
 
-                    <form onSubmit={handleLoginSubmit} className="space-y-5">
+                    <form onSubmit={handleAuth} className="space-y-5">
+                        {message && (
+                            <div className={`p-3 rounded-lg text-xs font-bold flex items-center gap-2 ${message.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-green-50 text-green-700 border border-green-200'}`}>
+                                <AlertCircle className="w-4 h-4" /> {message.text}
+                            </div>
+                        )}
+
                         <div>
-                            <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5 ml-1">
-                                {activeRole === 'citizen' ? 'Mobile Number / Aadhaar' : 'Department ID'}
-                            </label>
+                            <label className="block text-xs font-bold text-gray-700 uppercase mb-1.5 ml-1">Email Address</label>
                             <div className="relative">
-                                <User className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                                <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                                 <input
-                                    type="text"
+                                    type="email"
                                     required
-                                    value={credentials.id}
-                                    onChange={(e) => setCredentials({ ...credentials, id: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-900 focus:border-transparent outline-none transition-all text-sm bg-gray-50 focus:bg-white"
-                                    placeholder={activeRole === 'citizen' ? "Enter your ID" : "Ex: ADM-2024-X"}
+                                    value={email}
+                                    onChange={e => setEmail(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-900 outline-none text-sm bg-gray-50 focus:bg-white"
+                                    placeholder="citizen@example.com"
                                 />
                             </div>
                         </div>
@@ -102,48 +114,26 @@ export default function Login({ onLogin }) {
                                 <input
                                     type="password"
                                     required
-                                    value={credentials.password}
-                                    onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
-                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-900 focus:border-transparent outline-none transition-all text-sm bg-gray-50 focus:bg-white"
+                                    value={password}
+                                    onChange={e => setPassword(e.target.value)}
+                                    className="w-full pl-10 pr-4 py-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-blue-900 outline-none text-sm bg-gray-50 focus:bg-white"
                                     placeholder="••••••••"
+                                    minLength={6}
                                 />
                             </div>
                         </div>
 
-                        {/* Mock Captcha */}
-                        <div className="bg-gray-50 p-3 rounded-lg border border-gray-200 flex items-center justify-between">
-                            <div className="font-mono text-lg font-bold text-gray-600 tracking-widest line-through decoration-gray-400 select-none">
-                                8 X 2 Y 9 B
-                            </div>
-                            <button type="button" className="p-1 hover:bg-gray-200 rounded-full transition-colors">
-                                <RefreshCw className="w-4 h-4 text-gray-500" />
-                            </button>
-                        </div>
-                        <input
-                            placeholder="Enter Captcha"
-                            className="w-full p-2 text-sm border-b border-gray-300 focus:border-blue-900 outline-none bg-transparent"
-                        />
-
                         <button
                             type="submit"
-                            className="w-full bg-blue-900 text-white p-3 rounded-lg font-bold text-sm hover:bg-blue-800 transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+                            disabled={loading}
+                            className="w-full bg-blue-900 text-white p-3 rounded-lg font-bold text-sm hover:bg-blue-800 transition-all flex items-center justify-center gap-2 shadow-lg disabled:opacity-70"
                         >
-                            <span>Secure Login</span>
-                            <ArrowRight className="w-4 h-4" />
+                            {loading ? 'Processing...' : (isSignUp ? 'Create Secure Account' : 'Secure Login')}
+                            {!loading && <ArrowRight className="w-4 h-4" />}
                         </button>
-
-                        <p className="text-center text-xs text-gray-500 mt-4">
-                            By logging in, you agree to the <a href="#" className="text-blue-800 underline">Terms of Service</a>
-                        </p>
                     </form>
                 </div>
             </motion.div>
-
-            <div className="mt-8 flex gap-8 text-xs text-gray-500 font-medium">
-                <span>Copyright © 2024</span>
-                <span>Privacy Policy</span>
-                <span>Help Desk</span>
-            </div>
         </div>
     );
 }
