@@ -10,7 +10,7 @@ export default function Login({ onLogin }) {
     const handleLoginSubmit = (e) => {
         e.preventDefault();
         if (credentials.id && credentials.password) {
-            onLogin(activeRole);
+            onLogin(activeRole, credentials);
         }
     };
 

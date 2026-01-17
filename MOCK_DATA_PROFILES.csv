@@ -1,0 +1,16 @@
+role,full_name,auth_id
+citizen,Rahul Sharma,user_cit_001
+citizen,Priya Patel,user_cit_002
+citizen,Amit Singh,user_cit_003
+citizen,Sneha Gupta,user_cit_004
+citizen,Vikram Malhotra,user_cit_005
+citizen,Anjali Verma,user_cit_006
+citizen,Rohit Das,user_cit_007
+citizen,Kavita Reddy,user_cit_008
+citizen,Arjun Nair,user_cit_009
+citizen,Meera Joshi,user_cit_010
+authority,Officer Rajesh Kumar,user_auth_001
+authority,Officer Suman Rao,user_auth_002
+authority,Officer Anil Mehta,user_auth_003
+authority,Officer Deepika Sethi,user_auth_004
+authority,Officer Manoj Tiwari,user_auth_005
