@@ -10,4 +10,4 @@ A modern, government-themed grievance redressal portal.
 
 ## Deployment
 Deployed on Vercel.
-*Latest Update: Supabase Client Build Fix Applied.*
+*Latest Update: Deployment Sync Verified.*
